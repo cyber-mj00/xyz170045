@@ -13,7 +13,7 @@ def home():
               <body><h1>大鸭鸭表格生成工具</h1>
               <h3>炽焰天穹ML S1 2025  常规赛</h3>
               <p><a href="/download">下载</a>（每小时更新）</p>
-              <hr><p><a href="https://cn.170045.xyz" target="_blank">实时积分榜</a> | <a href="https://github.com/cyber-mj00/170045xyz" target="_blank">Source code</a></p>
+              <hr><p><a href="https://cn.170045.xyz" target="_blank">实时积分榜</a> | <a href="https://github.com/cyber-mj00/xyz170045" target="_blank">Source code</a></p>
               <p>&copy; 2023-25 <a href="https://cyber.mj00.top" target="_blank">Dayaya</a>. All rights reserved.</p>
               </body></html>'''.format()
     return Response(html, content_type='text/html; charset=utf-8')

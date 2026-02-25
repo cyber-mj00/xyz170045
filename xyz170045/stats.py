@@ -20,7 +20,7 @@ MAX_ITER = 100 # Max number of logs Majsoul can GET at one time
 
 def delFile(filename):
     file_path = join(dirname(__file__), filename)
-    if os.path.exists(file_path):
+    if os.path.exists(file_path) and not os.path.isdir(file_path):
         os.remove(file_path)
 
 def color_strtoint(color_str):
