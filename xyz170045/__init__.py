@@ -4,6 +4,7 @@ from flask import Flask, send_file, Response
 import os
 
 from os.path import join, dirname
+from getdata import *
 
 app = Flask(__name__)
 

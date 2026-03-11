@@ -17,20 +17,15 @@ class CNTZ(tzinfo):
         return f"{self.__class__.__name__}()"
 
 class Player:
-    def __init__(self, player_data, team = None):
-        self.dyyId = None
+    def __init__(self, dyyId, player_data, team = None):
+        self.dyyId = dyyId
         self.mjsId = player_data['account_id']
         self.nickname = player_data['nickname']
         self.team = team or ""
         self.total_game_count = player_data['account_data']['total_game_count']
         self.games = player_data['account_data']['recent_games']
         self.rank_pt = player_data["account_data"]['accumulate_point']
-        self.rank, self.rank_count = self.__getRank()
-    
-    def __getRank(self):
-        rank_freq = [int(t['rank']) for t in self.games]
-        rank = {x: rank_freq.count(x) for x in range(1,5)}
-        return rank, list(rank.values())
+        self.rank_count = player_data["rank_count"]
     
     def setDyyId(self, dyyId):
         self.dyyId = dyyId
@@ -68,36 +63,27 @@ class Player:
     def __repr__(self):
         return str({'_id': self.dyyId, 'mahjongSoulId': self.mjsId, 'nickname': self.nickname})
 
-class PlayerPool:
+class Players:
     def __init__(self, contestId):
         self.contestId = contestId
-        self.players: list[Player] = []
+        self.players: dict[str, Player] = {}
     
     def addPlayer(self, player: Player):
-        self.players.append(player)
+        self.players[player.dyyId] = player
     
-    def addPlayerFromDict(self, player_data):
-        self.players.append(Player(player_data))
+    def addPlayerFromDict(self, dyyId, player_data):
+        self.players[dyyId] = Player(dyyId, player_data)
     
-    def assignPlayerToTeam(self, account_id, team_name):
+    def modifyPlayerPt(self, dyyId, modifier):
         try:
-            idx = [p.mjsId for p in self.players].index(account_id)
-            self.players[idx].setTeam(team_name)
+            self.players[dyyId].modifyRankPt(modifier)
         except ValueError as e:
             print("Player not found.")
     
-    def modifyPlayerPt(self, account_id, modifier):
+    def modifyPlayerRank(self, dyyId, rank: tuple):
         try:
-            idx = [p.mjsId for p in self.players].index(account_id)
-            self.players[idx].modifyRankPt(modifier)
-        except ValueError as e:
-            print("Player not found.")
-    
-    def modifyPlayerRank(self, account_id, rank: tuple):
-        try:
-            idx = [p.mjsId for p in self.players].index(account_id)
             old, new = rank
-            self.players[idx].modifyRankCount(old, new)
+            self.players[dyyId].modifyRankCount(old, new)
         except ValueError as e:
             print("Player not found.")
     
@@ -105,7 +91,7 @@ class PlayerPool:
         data_cols = ["队伍","选手","积分","试合数","平顺","1着","2着","3着","4着","TOP率","连对率","避四率","最高分"]
         data = {a: [] for a in data_cols}
 
-        for player in self.players:
+        for player in self.players.values():
             data["队伍"].append(player.team)
             data["选手"].append(player.nickname)
             data["积分"].append(player.rank_pt / 1000)
@@ -127,11 +113,28 @@ class Team:
     def __init__(self, dyyId, name, players, color=None):
         self.dyyId = dyyId
         self.name = name
-        self.players: list[int] = players
+        self.players: list[dict] = players
+        self.color = color
+        # Key of following dicts is phase index
+        self.games_played: dict[int, int] = {}
+        self.aggregate: dict[int, int] = {}
+        self.score: dict[int, int] = {}
+        self.ranks: dict[int, list[int]] = {}
+    
+    def inTeam(self, dyyId):
+        return dyyId in [p["_id"] for p in self.players]
+    
+    def setColor(self, color):
         self.color = color
     
-    def inTeam(self, account_id):
-        return account_id in self.players
+    def playsIn(self, phase_index):
+        return phase_index in self.aggregate
+    
+    def setAggregate(self, phase_index, aggregate_total):
+        self.aggregate[phase_index] = aggregate_total
+    
+    def setScore(self, phase_index, score):
+        self.score[phase_index] = score
 
     def __str__(self):
         return str({"name": self.name, "players": self.players})
@@ -142,10 +145,17 @@ class Team:
 class Teams:
     def __init__(self, contestId):
         self.contestId = contestId
-        self.teams: list[Team] = []
+        self.teams: dict[str, Team] = {}
     
-    def addTeam(self, team: Team):
-        self.teams.append(team)
+    def addTeamFromDayaya(self, team_dict):
+        team = Team(dyyId := team_dict["_id"], team_dict["name"], team_dict["players"])
+        if "color" in team_dict:
+            team.setColor(team_dict["color"])
+        self.teams[dyyId] = team
+
+    def addTeamFromMajsoul(self, team_dict):
+        # Soon
+        pass
     
     def getPlayerTeam(self, account_id):
         for t in self.teams:

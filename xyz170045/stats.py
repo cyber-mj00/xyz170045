@@ -40,7 +40,7 @@ def main():
     hbr1_manager = ContestManager(os.environ.get('contest_unique_id'), hbr1_login, "Heaven Burns Red")
     print("Contest found! Setting up...")
     hbr1_teams = Teams(os.environ.get('contest_unique_id'))
-    hbr1_players = PlayerPool(os.environ.get('contest_unique_id'))
+    hbr1_players = Players(os.environ.get('contest_unique_id'))
     hbr1_games = Games(os.environ.get('contest_unique_id'))
     print("Fetching teams list...")
     teams_rawdata = hbr1_manager.get_teams()

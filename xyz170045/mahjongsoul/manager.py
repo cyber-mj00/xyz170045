@@ -81,8 +81,7 @@ class ContestManager:
         self.api = api
         self.game_type = game_type
         self.logger = logging.getLogger(game_type)
-        self.season_id = 1
-        self.get_current_season()
+        self.season_id = self.get_current_season()
     def get_current_season(self):
         self.season_id = int([d["season_id"] for d in self.api.get(method=f"contest/fetch_contest_season_list", unique_id=str(self.contest_unique_id))["data"] if d["state"] == 2][0])
         return self.season_id
@@ -94,6 +93,16 @@ class ContestManager:
         return self.api.get(method="contest/fetch_contest_team_list", unique_id=self.contest_unique_id, season_id=self.season_id, offset=offset, limit=limit)["data"]
     def get_team_members(self, team_id, offset=0, limit=10):
         return self.api.post(method="contest/fetch_contest_team_member_list", unique_id=str(self.contest_unique_id), season_id=self.season_id, team_id=team_id, offset=offset, limit=limit)["data"]
+    def get_player_rank_stats(self, offset=0, limit=10, settings: List=[0,0,0,0,1]):
+        """
+        seettings: List with len 5,
+        settings[0]: 1st Place Order Bonus,
+        settings[1]: 2nd Place Order Bonus,
+        settings[2]: 3rd Place Order Bonus,
+        settings[3]: 4th Place Order Bonus,
+        settings[4]: Point conversion.
+        """
+        return self.api.post(method="contest/fetch_season_player_calc_rank", unique_id=str(self.contest_unique_id), season_id=self.season_id, offset=offset, limit=limit, setting=settings)["data"]
     def get_logs(self, offset=0, limit=10):
         return self.api.get(method="contest/fetch_contest_game_records", unique_id=self.contest_unique_id, season_id=self.season_id,offset=offset, limit=limit)["data"]
     def pause_match_impl(self, uuid: str, resume: int):

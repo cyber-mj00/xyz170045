@@ -212,3 +212,4 @@ __marimo__/
 output_*.xlsx
 
 latest_file.txt
+*.pkl
