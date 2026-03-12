@@ -15,12 +15,11 @@ vim config.env
 You then need to install Python dependencies then run the script.
 ```bash
 pip install -r requirements.txt
-py stats.py
 ```
 
-## Majsoul Tourney Team Adaptation
+## Note
 
-Please ensure that "Season Type" is set to "**Team**" and "Note" is set to RGB color code for each team, or the script would not work.
+This script only works if BOTH Majsoul tourney and [majsoul-api](https://github.com/vg-mjg/majsoul-api "A website for mahjong soul leagues") are set up.
 
 ## Thanks
 
@@ -28,4 +27,4 @@ https://github.com/oscarfzs/pymjsoul
 
 https://github.com/Longhorn-Riichi/Ronhorn
 
-
+https://github.com/vg-mjg/majsoul-api
