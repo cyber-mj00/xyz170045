@@ -116,7 +116,7 @@ class DyyContestManager:
 
     def __fetch_contest(self):
         self.contest_info = self.api.get(method=f"contests/{self.contest_id}")
-    def __getCurrenttime(timezone=UTC):
+    def __getCurrentTime(timezone=UTC):
         return datetime.now(timezone)
     def __getDataByPhase(self):
         aggregateTotals = dict()

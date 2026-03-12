@@ -203,32 +203,20 @@ def refreshContestData(dayaya: DyyContestManager,
                        games_filename: str = "games.pkl"):
     
     print("Refreshing Dayaya Contest Data...")
-    #dayaya.update()
-
-    print("Deleting cache. Please wait...")
-    players_file_path = join(dirname(__file__), players_filename)
-    if os.path.exists(players_file_path):
-        deleteData(players_file_path)
-    teams_file_path = join(dirname(__file__), teams_filename)
-    if os.path.exists(teams_file_path):
-        deleteData(teams_file_path)
+    dayaya.update()
     
     print("Fetching players list...")
     player_pool = getPlayerData(dayaya, majsoul)
-    #player_pool = loadData(players_filename)
-    #saveData(player_pool, players_filename)
 
     print("Fetching teams list...")
     team_pool = getTeamData(dayaya, player_pool)
-    #team_pool = loadData(teams_filename)
     saveData(team_pool, teams_filename)
     
-    #setPlayerTeam(player_pool,team_pool)
     saveData(player_pool, players_filename)
     game_pool = getGameLogs(dayaya)
 
-    print("Setup completed. Saving data...")
     saveData(game_pool, games_filename)
+    print("Setup completed.")
 
     return player_pool, team_pool, game_pool
 

@@ -30,7 +30,7 @@ class Dayaya:
         return 2147483647000 if ms else 2147483647
     
     @staticmethod
-    def printDays(n):
+    def getDays(n):
         days = ["一","二","三","四","五","六","日"]
         return days[n]
     
@@ -38,6 +38,10 @@ class Dayaya:
     def maxMatches(phase_index):
         limit = [120, 20, 16]
         return limit[phase_index]
+    
+    @staticmethod
+    def getCurrentTime(timezone :tzinfo =CNTZ()):
+        return datetime.now(tz=timezone)
 
 class Player:
     def __init__(self, dyyId, player_data, team = None):
@@ -90,6 +94,9 @@ class Players:
     
     def addPlayerFromDict(self, dyyId, player_data):
         self.players[dyyId] = Player(dyyId, player_data)
+    
+    def getPlayerTeam(self, dyyId):
+        return self.players[dyyId].team
     
     def exportToDict(self):
         data_cols = ["队伍","选手","积分","试合数","平顺","1着","2着","3着","4着","TOP率","连对率","避四率","最高分"]
@@ -168,27 +175,21 @@ class Teams:
     def addPhase(self, index, phase_name):
         self.phases[index] = phase_name
     
-    def getPlayerTeam(self, dyyId):
-        for t in self.teams:
-            if t.inTeam(dyyId):
-                return t.name
-        return ""
-    
     def exportToDict(self):
-        data_cols = ["队伍","继承积分","本阶段积分","总积分","试合数","1着","2着","3着","4着"]
-        data = [{index: phase_name, data: {a: [] for a in data_cols}} for index, phase_name in self.phases.items()]
+        data_cols = ["队伍","总积分","继承","阶段","试合数","1着","2着","3着","4着"]
+        data = [{"index": index, "name": phase_name, "data": {a: [] for a in data_cols}} for index, phase_name in self.phases.items()]
 
         for index in self.phases.keys():
             for team in self.teams.values():
-                data["队伍"].append(team.name)
-                data["继承积分"].append(team.aggregate[index] / 1000)
-                data["本阶段积分"].append((team.score[index]-team.aggregate[index]) / 1000)
-                data["总积分"].append(team.score[index] / 1000)
-                data["试合数"].append(team.games_played[index])
-                data["1着"].append(team.ranks[index][0])
-                data["2着"].append(team.ranks[index][1])
-                data["3着"].append(team.ranks[index][2])
-                data["4着"].append(team.ranks[index][3])
+                data[index]["data"]["队伍"].append(team.name)
+                data[index]["data"]["继承"].append(team.aggregate[index] / 1000)
+                data[index]["data"]["阶段"].append((team.score[index]-team.aggregate[index]) / 1000)
+                data[index]["data"]["总积分"].append(team.score[index] / 1000)
+                data[index]["data"]["试合数"].append(team.games_played[index])
+                data[index]["data"]["1着"].append(team.ranks[index][0])
+                data[index]["data"]["2着"].append(team.ranks[index][1])
+                data[index]["data"]["3着"].append(team.ranks[index][2])
+                data[index]["data"]["4着"].append(team.ranks[index][3])
         
         return data
 
@@ -230,13 +231,19 @@ class Games:
     def getGameFromTime(self, time: datetime):
         return [g for g in self.games.values() if g.hasSameDate(time)]
     
+    def getGameTime(self, last=0):
+        """
+        last: 0 for most recent, 1 for 2nd most recent, etc.
+        """
+        return sorted([game.start_time for game in self.games.values()], reverse=True)[last]
+    
     def exportToDict(self, games = None):
         data_cols = ["开始时间","结束时间", "1位玩家","1位ID","1位分数","1位终局点数","2位玩家","2位ID","2位分数","2位终局点数","3位玩家","3位ID","3位分数","3位终局点数","4位玩家","4位ID","4位分数","4位终局点数","牌谱链接"]
         data = {a: [] for a in data_cols}
-        games = games or self.game_list
+        games = games or self.games
         #beijing_time = CNTZ()
 
-        for game in games:
+        for game in games.values():
             game_data = sorted(game.players, key=lambda x:x["uma"], reverse=True)
             data["开始时间"].append(game.start_time.strftime("%Y-%m-%d %H:%M:%S"))
             data["结束时间"].append(game.end_time.strftime("%Y-%m-%d %H:%M:%S"))
