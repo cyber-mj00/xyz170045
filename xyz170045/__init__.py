@@ -7,9 +7,14 @@ from os.path import join, dirname
 from getdata import *
 from getsheet import *
 
-def scheduled_job():
-    print("Scheduled job executed")
+def scheduled_task():
+    dayaya, majsoul, player_pool, team_pool, game_pool = loadContestData()
+    generateSheet(player_pool, team_pool, game_pool)
+    print(f"[{Dayaya.getCurrentTime()}] Scheduled task: updated.")
 
+def generateSheet(player_pool, team_pool, game_pool):
+    df_players, df_players_byteam, df_games, team_data = getDf(player_pool, team_pool, game_pool)
+    getSheet(player_pool, team_pool, game_pool, df_players, df_players_byteam, df_games, team_data)
 
 class Config:
     SCHEDULER_API_ENABLED = True
@@ -47,16 +52,6 @@ def create_app():
             return f"Error sending file: {str(e)}", 500
 
     return app
-
-
-def scheduled_task():
-    dayaya, majsoul, player_pool, team_pool, game_pool = loadContestData()
-    generateSheet(player_pool, team_pool, game_pool)
-    print(f"[{Dayaya.getCurrentTime()}] Scheduled task: updated.")
-
-def generateSheet(player_pool, team_pool, game_pool):
-    df_players, df_players_byteam, df_games, team_data = getDf(player_pool, team_pool, game_pool)
-    getSheet(player_pool, team_pool, game_pool, df_players, df_players_byteam, df_games, team_data)
 
 
 
