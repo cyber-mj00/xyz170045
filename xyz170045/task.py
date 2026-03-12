@@ -2,6 +2,7 @@ from getdata import *
 from getsheet import *
 
 def main():
+    print(f"[{Dayaya.getCurrentTime()}] Scheduled task: started.")
     dayaya, majsoul, player_pool, team_pool, game_pool = loadContestData()
     generateSheet(player_pool, team_pool, game_pool)
     print(f"[{Dayaya.getCurrentTime()}] Scheduled task: updated.")

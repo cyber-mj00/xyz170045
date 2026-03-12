@@ -21,7 +21,7 @@ class DayayaAPI:
     def __init__(self, endpoint = "", log_messages=False, logger_name="Dayaya Manager"):
         self.logger = logging.getLogger(logger_name)
         self.log_messages = log_messages
-        self.endpoint = endpoint or "http://web.170045.xyz:8008/api/"
+        self.endpoint = endpoint or "http://72.11.133.122:8008/api/"
         self.headers = {
             "Accept": "application/json, */*",
             "Content-Type": "application/json",
