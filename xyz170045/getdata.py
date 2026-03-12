@@ -15,14 +15,13 @@ from mahjongsoul.helper import *
 from mahjongsoul.manager import *
 from mahjongsoul.dayaya import *
 
-MAX_ITER = 100 # Max number of logs Majsoul can GET at one time
-MAX_MATCHES = [120, 20, 16]
+env_path = join(dirname(__file__), 'config.env')
+dotenv.load_dotenv(env_path)
 
 def fetchContestData(filename: str="dayaya.pkl"):
     file_path = join(dirname(__file__), filename)
     if not os.path.exists(file_path):
-        dyy_api = DayayaAPI()
-        dayaya = DyyContestManager(os.environ.get('dyy_contest_id'), dyy_api)
+        dayaya = generateContestData()
         with open(file_path, "wb") as f:
             pickle.dump(dayaya, f)
     else:
@@ -30,11 +29,23 @@ def fetchContestData(filename: str="dayaya.pkl"):
             dayaya = pickle.load(f)
     return dayaya
 
+def generateContestData():
+    print("Logging in to Dayaya Contest Dashboard...")
+    dyy_api = DayayaAPI()
+    print(f"Locating Dayaya Contest {os.environ.get('dyy_contest_id')}...")
+    dayaya = DyyContestManager(os.environ.get('dyy_contest_id'), dyy_api)
+    return dayaya
+
+def reloadContestData(filename: str="dayaya.pkl"):
+    file_path = join(dirname(__file__), filename)
+    if os.path.exists(file_path) and not os.path.isdir(file_path):
+        os.remove(file_path)
+    fetchContestData(filename)
+
 def fetchMajsoulConnector(filename: str="majsoul.pkl"):
     file_path = join(dirname(__file__), filename)
     if not os.path.exists(file_path):
-        mjs_login = TournamentLogin(mjs_email=os.environ.get('mjs_email'), mjs_pw=os.environ.get('mjs_passwd'))
-        majsoul = ContestManager(os.environ.get('contest_unique_id'), mjs_login, "Heaven Burns Red")
+        majsoul = generateMajsoulConnector()
         with open(file_path, "wb") as f:
             pickle.dump(majsoul, f)
     else:
@@ -42,31 +53,53 @@ def fetchMajsoulConnector(filename: str="majsoul.pkl"):
             majsoul = pickle.load(f)
     return majsoul
 
+def generateMajsoulConnector():
+    print("Logging in to Majsoul Contest Dashboard...")
+    mjs_login = TournamentLogin(mjs_email=os.environ.get('mjs_email'), mjs_pw=os.environ.get('mjs_passwd'))
+    print(f"Locating Majsoul Contest {os.environ.get('contest_unique_id')}...")
+    majsoul = ContestManager(os.environ.get('contest_unique_id'), mjs_login, "Heaven Burns Red")
+    return majsoul
+
+def reloadMajsoulConnector(filename: str="dayaya.pkl"):
+    file_path = join(dirname(__file__), filename)
+    if os.path.exists(file_path) and not os.path.isdir(file_path):
+        os.remove(file_path)
+    fetchMajsoulConnector(filename)
+
 def getPlayerData(dayaya: DyyContestManager, majsoul: ContestManager):
     players = dayaya.players
     player_pool = Players(dayaya.contest_id)
-    rank_stats = majsoul.get_player_rank_stats(limit=MAX_ITER)
+    rank_stats = majsoul.get_player_rank_stats(limit=Dayaya.maxIter())
     ranking = rank_stats["rank"]
-    if (player_total := rank_stats["total"]) > MAX_ITER:
-        for i in range(1, player_total//MAX_ITER+1):
-            ranking.append(rank_stats = majsoul.get_player_rank_stats(offset=i*MAX_ITER,limit=MAX_ITER))
+    player_total = rank_stats["total"]
+    print(f"Total number of players: {player_total}")
+    if (player_total) > Dayaya.maxIter():
+        for i in range(1, Dayaya.ceil(player_total/Dayaya.maxIter())):
+            ranking.append(rank_stats = majsoul.get_player_rank_stats(offset=i*Dayaya.maxIter(),limit=Dayaya.maxIter()))
     
-    for player in players:
+    for j, player in enumerate(players):
         dyyId = player["_id"]
         p_data = [r for r in ranking if r["nickname"] == player["nickname"]]
         if len(p_data) > 0:
+            pdata_mjs = p_data[0]
+            print(f"Adding player {player["nickname"]}[{pdata_mjs["account_id"]}] ({j+1}/{player_total})")
             player_data = {
-                'account_id': p_data["account_id"],
+                'account_id': pdata_mjs["account_id"],
                 'nickname': player["nickname"],
                 'account_data': {
                     'total_game_count': player["gamesPlayed"],
                     'accumulate_point': player["tourneyScore"],
-                    'recent_games': dayaya.getPlayerGames()
+                    'recent_games': dayaya.getPlayerGames(dyyId)
                 },
-                "rank_count": [p_data["rank_1_count"], p_data["rank_2_count"], p_data["rank_3_count"], p_data["rank_4_count"]]
+                "rank_count": [pdata_mjs["rank_1_count"], pdata_mjs["rank_2_count"], pdata_mjs["rank_3_count"], pdata_mjs["rank_4_count"]]
                 }
             player_pool.addPlayerFromDict(dyyId, player_data)
     return player_pool
+
+def getRankCount(recent_games):
+    rank_freq = [int(t['rank']) for t in recent_games]
+    rank = {x: rank_freq.count(x) for x in range(1,5)}
+    return rank, list(rank.values())
 
 def saveData(pool, filename: str):
     file_path = join(dirname(__file__), filename)
@@ -75,50 +108,137 @@ def saveData(pool, filename: str):
 
 def loadData(filename: str):
     file_path = join(dirname(__file__), filename)
-    with open(file_path, "wb") as f:
+    with open(file_path, "rb") as f:
         pool = pickle.load(f)
     return pool
 
-def getTeamData(dayaya: DyyContestManager):
+def deleteData(filename: str):
+    file_path = join(dirname(__file__), filename)
+    if os.path.exists(file_path) and not os.path.isdir(file_path):
+        os.remove(file_path)
+
+def getTeamData(dayaya: DyyContestManager, player_pool: Players):
     teams = dayaya.teams
+    print(f"Total number of teams: {len(teams)}")
     team_pool = Teams(dayaya.contest_id)
-    for team in teams:
+    for j, team in enumerate(teams):
+        print(f"Adding team {team["name"]} ({j+1}/{len(teams)})")
         team_pool.addTeamFromDayaya(team)
+    updateTeamScores(dayaya, team_pool)
+    updateTeamMatches(dayaya, player_pool, team_pool)
     return team_pool
 
 def updateTeamScores(dayaya: DyyContestManager, team_pool: Teams):
     phases = dayaya.phases
     for phase in phases:
         phase_index = phase["index"]
+        # Record phase in Teams
+        team_pool.addPhase(phase_index, phase["name"])
+        # Update aggregate
         foo = phase_index - dayaya.current_phase
-        for team_id, total in phase["aggregateTotals"].items():
+        print(f"Setting teams' aggregate score from previous phase.")
+        for team_id, total in dayaya.start_points[phase_index].items():
             team_pool.teams[team_id].setAggregate(phase_index, total)
+        # Update latest score
+        print(f"Updating teams' current score.")
         if foo < 0:
-            last_session = sorted(phase["sessions"], key=lambda x:x["scheduledTime"])[-1]
+            last_session = sorted(dayaya.sessions[phase_index], key=lambda x:x["scheduledTime"])[-1]
             for team_id, total in last_session["aggregateTotals"].items():
                 team_pool.teams[team_id].setScore(phase_index, total)
         elif foo == 0:
             this_session = dayaya.current_session
             for team_id, total in this_session["aggregateTotals"].items():
                 team_pool.teams[team_id].setScore(phase_index, total)
-    for team_id in team_pool.teams.keys():
-        team_stats = dayaya.getTeamStats(team_id)["team_id"]
-        getGamesPlayed = lambda x: [min(x,MAX_MATCHES[0]), 
-                                    max(min(x-MAX_MATCHES[0],MAX_MATCHES[1]), 0), 
-                                    max(min(x-MAX_MATCHES[0]-MAX_MATCHES[1],MAX_MATCHES[2]), 0)]
+
+def updateTeamMatches(dayaya: DyyContestManager, player_pool: Players, team_pool: Teams):
+    phases = dayaya.phases
+    for team_id, team in team_pool.teams.items():
+        # Update number of matches played
+        print(f"Updating number of matches played for team {team.name}.")
+        team_stats = dayaya.getTeamStats(team_id)[team_id]
+        getGamesPlayed = lambda x: [min(x,Dayaya.maxMatches(0)), 
+                                    max(min(x-Dayaya.maxMatches(0),Dayaya.maxMatches(1)), 0), 
+                                    max(min(x-Dayaya.maxMatches(0)-Dayaya.maxMatches(1),Dayaya.maxMatches(2)), 0)]
         team_gamesPlayed = getGamesPlayed(team_stats["stats"]["gamesPlayed"])
+        team_phasesPlayed = sum([gp > 0 for gp in team_gamesPlayed])
         for i, gp in enumerate(team_gamesPlayed):
             if gp > 0:
-                team_pool.teams[team_id].games_played[i] = gp
-        
+                team_pool.teams[team_id].setGamesPlayed(i, gp)
+        # Update team rank count by phase
+        rank_count = {a: [0,0,0,0] for a in range(team_phasesPlayed)}
+        print("Updating team rank count by phase and allocating players to teams...")
+        for player in team.players:
+            player_pointer = player_pool.players[player["_id"]]
+            player_pointer.setTeam(team.name)
+            for i in range(team_phasesPlayed):
+                player_games = [g for g in player_pointer.games if g["phase_index"] == i]
+                _, player_rank = getRankCount(player_games)
+                rank_count[i] = [a+b for a,b in zip(rank_count[i], player_rank)]
+        team_pool.teams[team_id].ranks = rank_count
 
-        
+def loadContestData(
+        players_filename: str = "players.pkl",
+        teams_filename: str = "teams.pkl",
+        games_filename: str = "games.pkl"):
+    dayaya = fetchContestData()
+    majsoul = fetchMajsoulConnector()
 
+    player_pool, team_pool, game_pool = refreshContestData(dayaya, majsoul, players_filename, teams_filename, games_filename)
+    return dayaya, majsoul, player_pool, team_pool, game_pool
 
-        
+def resetContestData(
+        players_filename: str = "players.pkl",
+        teams_filename: str = "teams.pkl",
+        games_filename: str = "games.pkl"):
+    dayaya = reloadContestData()
+    majsoul = reloadMajsoulConnector()
 
-def updateContestData():
-    pass
+    player_pool, team_pool, game_pool = refreshContestData(dayaya, majsoul, players_filename, teams_filename, games_filename)
+    return dayaya, majsoul, player_pool, team_pool, game_pool
+
+def refreshContestData(dayaya: DyyContestManager, 
+                       majsoul: ContestManager,
+                       players_filename: str = "players.pkl",
+                       teams_filename: str = "teams.pkl",
+                       games_filename: str = "games.pkl"):
+    
+    print("Refreshing Dayaya Contest Data...")
+    #dayaya.update()
+
+    print("Deleting cache. Please wait...")
+    players_file_path = join(dirname(__file__), players_filename)
+    if os.path.exists(players_file_path):
+        deleteData(players_file_path)
+    teams_file_path = join(dirname(__file__), teams_filename)
+    if os.path.exists(teams_file_path):
+        deleteData(teams_file_path)
+    
+    print("Fetching players list...")
+    player_pool = getPlayerData(dayaya, majsoul)
+    #player_pool = loadData(players_filename)
+    #saveData(player_pool, players_filename)
+
+    print("Fetching teams list...")
+    team_pool = getTeamData(dayaya, player_pool)
+    #team_pool = loadData(teams_filename)
+    saveData(team_pool, teams_filename)
+    
+    #setPlayerTeam(player_pool,team_pool)
+    saveData(player_pool, players_filename)
+    game_pool = getGameLogs(dayaya)
+
+    print("Setup completed. Saving data...")
+    saveData(game_pool, games_filename)
+
+    return player_pool, team_pool, game_pool
+
+def getGameLogs(dayaya: DyyContestManager):
+    print("Fetching game logs...")
+    games = dayaya.getContestGames()
+    game_pool = Games(dayaya.contest_id)
+    for game_data in games:
+        game_pool.addGameFromDict(game_data)
+    return game_pool
 
 
 

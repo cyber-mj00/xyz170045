@@ -8,21 +8,21 @@ import time
 from typing import *
 from websockets.exceptions import ConnectionClosed, ConnectionClosedError, InvalidStatusCode
 
+from .helper import Dayaya
+
 # MS_MANAGER_WSS_ENDPOINT: `__MJ_DHS_WS__` from https://www.maj-soul.com/dhs/js/config.js
 # MS_MANAGER_WSS_ENDPOINT = "wss://common-v2.maj-soul.com/contest_ws_gateway"
 EAST = 0
 SOUTH = 1
 WEST = 2
 NORTH = 3
-MAX_TIMESTAMP = 2147483647000
 
 class DayayaAPI:
     def __init__(self, endpoint = "", log_messages=False, logger_name="Dayaya Manager"):
         self.logger = logging.getLogger(logger_name)
         self.log_messages = log_messages
-        self.endpoint = endpoint or "http://web.170045.xyz:8008/api"
+        self.endpoint = endpoint or "http://web.170045.xyz:8008/api/"
         self.headers = {
-            "Referer": "https://170045.xyz/",
             "Accept": "application/json, */*",
             "Content-Type": "application/json",
             "Accept-Language": "en-US,en;q=0.5",
@@ -126,37 +126,46 @@ class DyyContestManager:
             aggregateTotals[i] = data["aggregateTotals"]
             sessions[i] = data["sessions"]
         return aggregateTotals, sessions
+    
+    def getGamePhase(self, startTime):
+        phase_startTime = [p["startTime"] for p in self.phases] + [Dayaya.maxTimestamp()]
+        return sum([startTime > pst for pst in phase_startTime])-1
 
     def getPlayerDyyId(self, nickname: str, limit: int=1):
         return self.api.get(method="players", name=nickname, limit=limit)["_id"]
     def getPlayerGames(self, player_dyyId: str):
-        return self.api.get(method=f"contests/{self.contestId}/players/{player_dyyId}/games")
+        return self.api.get(method=f"contests/{self.contest_id}/players/{player_dyyId}/games")
     def getPlayerStats(self, player: str):
         """
         player: dyyId
         """
-        return self.api.get(method=f"contests/{self.contestId}/stats", player=player)
+        return self.api.get(method=f"contests/{self.contest_id}/stats", player=player)
     def getTeamStats(self, team: str):
         """
         team: dyyId
         """
-        return self.api.get(method=f"contests/{self.contestId}/stats", team=team)
+        return self.api.get(method=f"contests/{self.contest_id}/stats", team=team)
     def getAllPlayerStats(self):
-        return self.api.get(method=f"contests/{self.contestId}/stats", players=None)
-    def getPlayerGames(self, id, start_time: int=None, end_time: int=None):
+        return self.api.get(method=f"contests/{self.contest_id}/stats", players=None)
+    def getPlayerGames(self, id, usePhase = True):
         """
         "start_time" and "end_time" defines range of games to be recorded based on START_TIME of games.
         Type is int - Unix timestamp in milliseconds.
         """
-        games_raw = [game for game in self.api.get(method=f"contests/{self.contestId}/players/{id}/games", players=None)
-                     if game["start_time"] >= (start_time or 0) and game["start_time"] <= (end_time or MAX_TIMESTAMP)]
+        games_raw = [game for game in self.api.get(method=f"contests/{self.contest_id}/players/{id}/games")]
         recent_games = []
         for game in games_raw:
             # Returns the index if found, or -1 if not
             index = next((i for i, item in enumerate(game["players"]) if item.get("_id") == id), -1)
             point = game["finalScore"][index]["uma"]
             rank = sorted([sc["uma"] for sc in game["finalScore"]], reverse=True).index(point) +1
-            recent_games.append({"rank": rank, "total_point": point})
+            r_game = {"rank": rank, "raw_score": game["finalScore"][index]["score"], "total_point": point}
+            if usePhase:
+                r_game["phase_index"] = self.getGamePhase(game["start_time"])
+            recent_games.append(r_game)
+        return recent_games
+    def getContestGames(self):
+        return self.api.get(method="games", contests=self.contest_id)
 
 
         
