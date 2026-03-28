@@ -133,7 +133,7 @@ def updateTeamScores(dayaya: DyyContestManager, team_pool: Teams):
     for phase in phases:
         phase_index = phase["index"]
         # Record phase in Teams
-        team_pool.addPhase(phase_index, phase["name"])
+        team_pool.addPhase(phase_index, phase["name"], dayaya.start_points[phase_index].keys())
         # Update aggregate
         foo = phase_index - dayaya.current_phase
         print(f"Setting teams' aggregate score from previous phase.")
