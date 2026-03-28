@@ -69,29 +69,31 @@ def reloadMajsoulConnector(filename: str="dayaya.pkl"):
 def getPlayerData(dayaya: DyyContestManager, majsoul: ContestManager):
     players = dayaya.players
     player_pool = Players(dayaya.contest_id)
-    rank_stats = majsoul.get_player_rank_stats(limit=Dayaya.maxIter())
-    ranking = rank_stats["rank"]
-    player_total = rank_stats["total"]
+    player_list = majsoul.get_players(limit=Dayaya.maxIter())
+    ranking = {p_data["nickname"]: p_data for p_data in player_list["list"]}
+    player_total = player_list["total"]
     print(f"Total number of players: {player_total}")
     if (player_total) > Dayaya.maxIter():
         for i in range(1, Dayaya.ceil(player_total/Dayaya.maxIter())):
-            ranking.append(rank_stats = majsoul.get_player_rank_stats(offset=i*Dayaya.maxIter(),limit=Dayaya.maxIter()))
+            ranking |= {p_data["nickname"]: p_data
+                for p_data in majsoul.get_players(offset=i*Dayaya.maxIter(),limit=Dayaya.maxIter())['list']
+            }
     
     for j, player in enumerate(players):
         dyyId = player["_id"]
-        p_data = [r for r in ranking if r["nickname"] == player["nickname"]]
-        if len(p_data) > 0:
-            pdata_mjs = p_data[0]
-            print(f"Adding player {player["nickname"]}[{pdata_mjs["account_id"]}] ({j+1}/{player_total})")
+        if (p_nick := player["nickname"]) in ranking:
+            mjsId = ranking[p_nick]["account_id"]
+            print(f"Adding player {player["nickname"]}[{mjsId}] ({j+1}/{player_total})")
+            recent_games, game_stats = dayaya.getPlayerGamesData(dyyId, stats=False)
             player_data = {
-                'account_id': pdata_mjs["account_id"],
+                'account_id': mjsId,
                 'nickname': player["nickname"],
                 'account_data': {
                     'total_game_count': player["gamesPlayed"],
                     'accumulate_point': player["tourneyScore"],
-                    'recent_games': dayaya.getPlayerGames(dyyId)
+                    'recent_games': recent_games
                 },
-                "rank_count": [pdata_mjs["rank_1_count"], pdata_mjs["rank_2_count"], pdata_mjs["rank_3_count"], pdata_mjs["rank_4_count"]]
+                'stats': game_stats
                 }
             player_pool.addPlayerFromDict(dyyId, player_data)
     return player_pool

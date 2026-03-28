@@ -147,13 +147,14 @@ class DyyContestManager:
         return self.api.get(method=f"contests/{self.contest_id}/stats", team=team)
     def getAllPlayerStats(self):
         return self.api.get(method=f"contests/{self.contest_id}/stats", players=None)
-    def getPlayerGames(self, id, usePhase = True):
+    def getPlayerGamesData(self, id, usePhase = True, stats = True):
         """
         "start_time" and "end_time" defines range of games to be recorded based on START_TIME of games.
         Type is int - Unix timestamp in milliseconds.
         """
-        games_raw = [game for game in self.api.get(method=f"contests/{self.contest_id}/players/{id}/games")]
+        games_raw = self.getPlayerGames(id)
         recent_games = []
+        game_stats = {}
         for game in games_raw:
             # Returns the index if found, or -1 if not
             index = next((i for i, item in enumerate(game["players"]) if item.get("_id") == id), -1)
@@ -163,7 +164,14 @@ class DyyContestManager:
             if usePhase:
                 r_game["phase_index"] = self.getGamePhase(game["start_time"])
             recent_games.append(r_game)
-        return recent_games
+            if stats:
+                game_stats = self.__getPlayerStatsFromGames(games_raw)
+        return recent_games, game_stats
+    def getPlayerStatsFromGames(self, player_dyyId: str):
+        games_raw = self.getPlayerGames(player_dyyId)
+        return self.__getPlayerStatsFromGames(games_raw)
+    def __getPlayerStatsFromGames(self, games_raw):
+        return {}
     def getContestGames(self):
         return self.api.get(method="games", contests=self.contest_id)
 

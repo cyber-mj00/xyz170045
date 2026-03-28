@@ -40,8 +40,12 @@ class Dayaya:
         return limit[phase_index]
     
     @staticmethod
-    def getCurrentTime(timezone :tzinfo =CNTZ()):
+    def getCurrentTime(timezone: tzinfo =CNTZ()):
         return datetime.now(tz=timezone)
+    
+    @staticmethod
+    def getHan(num, menzen=True):
+        pass
 
 class Player:
     def __init__(self, dyyId, player_data, team = None):
@@ -52,10 +56,12 @@ class Player:
         self.total_game_count = player_data['account_data']['total_game_count']
         self.games = player_data['account_data']['recent_games']
         self.rank_pt = player_data["account_data"]['accumulate_point']
-        self.rank_count = player_data["rank_count"]
-        self.rank = {}
-        for i, r in enumerate(self.rank_count):
-            self.rank[i+1] = r
+        self.rank, self.rank_count = self.__getRank()
+    
+    def __getRank(self):
+        rank_freq = [int(t['rank']) for t in self.games]
+        rank = {x: rank_freq.count(x) for x in range(1,5)}
+        return rank, list(rank.values())
     
     def setDyyId(self, dyyId):
         self.dyyId = dyyId

@@ -85,11 +85,11 @@ class ContestManager:
     def get_current_season(self):
         self.season_id = int([d["season_id"] for d in self.api.get(method=f"contest/fetch_contest_season_list", unique_id=str(self.contest_unique_id))["data"] if d["state"] == 2][0])
         return self.season_id
-    def get_all_players_stats_card(self, offset=0, limit=20):
-        return self.api.get(method="contest/contest_season_player_list", unique_id=self.contest_unique_id, season_id=self.season_id, search=None, state=2, offset=offset, limit=limit)["data"]
+    def get_players(self, search=None, offset=0, limit=20):
+        return self.api.get(method="contest/contest_season_player_list", unique_id=self.contest_unique_id, season_id=self.season_id, search=search, state=2, offset=offset, limit=limit)["data"]
     def get_player_stats_card(self, account_id):
         return self.api.get(method="contest/fetch_season_player_data", unique_id=self.contest_unique_id, season_id=self.season_id, account_id=account_id)["data"]
-    def get_teams(self, offset=0, limit=300):
+    def get_teams(self, offset=0, limit=20):
         return self.api.get(method="contest/fetch_contest_team_list", unique_id=self.contest_unique_id, season_id=self.season_id, offset=offset, limit=limit)["data"]
     def get_team_members(self, team_id, offset=0, limit=10):
         return self.api.post(method="contest/fetch_contest_team_member_list", unique_id=str(self.contest_unique_id), season_id=self.season_id, team_id=team_id, offset=offset, limit=limit)["data"]
