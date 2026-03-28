@@ -166,7 +166,7 @@ class Teams:
     def __init__(self, contestId):
         self.contestId = contestId
         self.teams: dict[str, Team] = {}
-        self.phases: dict[int, str] = {}
+        self.phases: dict[int, dict[str, str|list[str]]] = {}
     
     def addTeamFromDayaya(self, team_dict):
         team = Team(dyyId := team_dict["_id"], team_dict["name"], team_dict["players"])
@@ -178,24 +178,28 @@ class Teams:
         # Soon
         pass
 
-    def addPhase(self, index, phase_name):
-        self.phases[index] = phase_name
+    def addPhase(self, index, phase_name, playing_teamList):
+        self.phases[index] = {
+            "name": phase_name,
+            "teams": playing_teamList
+        }
     
     def exportToDict(self):
         data_cols = ["队伍","总积分","继承","阶段","试合数","1着","2着","3着","4着"]
-        data = [{"index": index, "name": phase_name, "data": {a: [] for a in data_cols}} for index, phase_name in self.phases.items()]
+        data = [{"index": index, "name": phase["name"], "data": {a: [] for a in data_cols}} for index, phase in self.phases.items()]
 
         for index in self.phases.keys():
             for team in self.teams.values():
-                data[index]["data"]["队伍"].append(team.name)
-                data[index]["data"]["继承"].append(team.aggregate[index] / 1000)
-                data[index]["data"]["阶段"].append((team.score[index]-team.aggregate[index]) / 1000)
-                data[index]["data"]["总积分"].append(team.score[index] / 1000)
-                data[index]["data"]["试合数"].append(team.games_played[index])
-                data[index]["data"]["1着"].append(team.ranks[index][0])
-                data[index]["data"]["2着"].append(team.ranks[index][1])
-                data[index]["data"]["3着"].append(team.ranks[index][2])
-                data[index]["data"]["4着"].append(team.ranks[index][3])
+                if team.dyyId in self.phases[index]["teams"]:
+                    data[index]["data"]["队伍"].append(team.name)
+                    data[index]["data"]["继承"].append(team.aggregate[index] / 1000)
+                    data[index]["data"]["阶段"].append((team.score[index]-team.aggregate[index]) / 1000)
+                    data[index]["data"]["总积分"].append(team.score[index] / 1000)
+                    data[index]["data"]["试合数"].append(team.games_played[index])
+                    data[index]["data"]["1着"].append(team.ranks[index][0])
+                    data[index]["data"]["2着"].append(team.ranks[index][1])
+                    data[index]["data"]["3着"].append(team.ranks[index][2])
+                    data[index]["data"]["4着"].append(team.ranks[index][3])
         
         return data
 
