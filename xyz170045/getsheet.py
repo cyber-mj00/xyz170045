@@ -19,6 +19,8 @@ from mahjongsoul.dayaya import *
 env_path = join(dirname(__file__), 'config.env')
 dotenv.load_dotenv(env_path)
 DAYS = ["一","二","三","四","五","六","日"]
+CUTOFF = [6,4,1]
+
 MAX_ITER = 100 # Max number of logs Majsoul can GET at one time
 
 def delFile(filename):
@@ -60,8 +62,8 @@ def getDf(player_pool: Players,
         df_pointer.insert(2,"差值",-df_pointer['总积分'].diff())
 
         cutoff = df_pointer['总积分'].copy()
-        cutoff.iloc[:6] = df_pointer['总积分'].iloc[:6] - df_pointer.loc[6, '总积分']
-        cutoff.iloc[6:] = df_pointer['总积分'].iloc[6:] - df_pointer.loc[5, '总积分']
+        cutoff.iloc[:CUTOFF[i]] = df_pointer['总积分'].iloc[:CUTOFF[i]] - df_pointer.loc[CUTOFF[i], '总积分']
+        cutoff.iloc[CUTOFF[i]:] = df_pointer['总积分'].iloc[CUTOFF[i]:] - df_pointer.loc[CUTOFF[i]-1, '总积分']
         df_pointer.insert(3, "晋级线", cutoff)
 
         df_pointer.index = df_pointer.index + 1

@@ -133,7 +133,7 @@ def updateTeamScores(dayaya: DyyContestManager, team_pool: Teams):
     for phase in phases:
         phase_index = phase["index"]
         # Record phase in Teams
-        team_pool.addPhase(phase_index, phase["name"], dayaya.start_points[phase_index].keys())
+        team_pool.addPhase(phase_index, phase["name"], list(dayaya.start_points[phase_index].keys()))
         # Update aggregate
         foo = phase_index - dayaya.current_phase
         print(f"Setting teams' aggregate score from previous phase.")
@@ -146,7 +146,9 @@ def updateTeamScores(dayaya: DyyContestManager, team_pool: Teams):
             for team_id, total in last_session["aggregateTotals"].items():
                 team_pool.teams[team_id].setScore(phase_index, total)
         elif foo == 0:
-            this_session = dayaya.current_session
+            first_session = sorted(dayaya.sessions[phase_index], key=lambda x:x["scheduledTime"])[0]
+            current_session = dayaya.current_session
+            this_session = first_session if first_session["scheduledTime"] > current_session["scheduledTime"] else current_session
             for team_id, total in this_session["aggregateTotals"].items():
                 team_pool.teams[team_id].setScore(phase_index, total)
 
@@ -162,10 +164,11 @@ def updateTeamMatches(dayaya: DyyContestManager, player_pool: Players, team_pool
         team_gamesPlayed = getGamesPlayed(team_stats["stats"]["gamesPlayed"])
         team_phasesPlayed = sum([gp > 0 for gp in team_gamesPlayed])
         for i, gp in enumerate(team_gamesPlayed):
-            if gp > 0:
+            #if gp > 0:
                 team_pool.teams[team_id].setGamesPlayed(i, gp)
         # Update team rank count by phase
-        rank_count = {a: [0,0,0,0] for a in range(team_phasesPlayed)}
+        #rank_count = {a: [0,0,0,0] for a in range(team_phasesPlayed)}
+        rank_count = {a: [0,0,0,0] for a in range(len(phases))}
         print("Updating team rank count by phase and allocating players to teams...")
         for player in team.players:
             player_pointer = player_pool.players[player["_id"]]
