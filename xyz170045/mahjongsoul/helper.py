@@ -40,6 +40,10 @@ class Dayaya:
         return limit[phase_index]
     
     @staticmethod
+    def roundUp(totals):
+        return Dayaya.ceil(totals/100)*100
+    
+    @staticmethod
     def getCurrentTime(timezone :tzinfo =CNTZ()):
         return datetime.now(tz=timezone)
 
@@ -131,6 +135,7 @@ class Team:
         self.aggregate: dict[int, int] = {}
         self.score: dict[int, int] = {}
         self.ranks: dict[int, list[int]] = {}
+        self.offset: dict[int, int] = {}
     
     def inTeam(self, dyyId):
         return dyyId in [p["_id"] for p in self.players]
@@ -142,13 +147,18 @@ class Team:
         return phase_index in self.aggregate
     
     def setAggregate(self, phase_index, aggregate_total):
-        self.aggregate[phase_index] = aggregate_total
+        offset = 0 if phase_index-1 not in self.offset else self.offset[phase_index-1] / 2
+        self.aggregate[phase_index] = aggregate_total + offset
+        self.__setOffset(phase_index)
     
     def setScore(self, phase_index, score):
         self.score[phase_index] = score
     
     def setGamesPlayed(self, phase_index, games_played):
         self.games_played[phase_index] = games_played
+    
+    def __setOffset(self, phase_index):
+        self.offset[phase_index] = Dayaya.roundUp(self.aggregate[phase_index]) - self.aggregate[phase_index]
 
     def __str__(self):
         return str({"name": self.name, "players": self.players})
@@ -186,9 +196,9 @@ class Teams:
             for team in self.teams.values():
                  if team.dyyId in self.phases[index]["teams"]:
                     data[index]["data"]["队伍"].append(team.name)
-                    data[index]["data"]["继承"].append(team.aggregate[index] / 1000)
+                    data[index]["data"]["继承"].append((team.aggregate[index] + team.offset[index]) / 1000)
                     data[index]["data"]["阶段"].append((team.score[index]-team.aggregate[index]) / 1000)
-                    data[index]["data"]["总积分"].append(team.score[index] / 1000)
+                    data[index]["data"]["总积分"].append((team.score[index] + team.offset[index]) / 1000)
                     data[index]["data"]["试合数"].append(team.games_played[index])
                     data[index]["data"]["1着"].append(team.ranks[index][0])
                     data[index]["data"]["2着"].append(team.ranks[index][1])
