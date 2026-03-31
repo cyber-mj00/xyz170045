@@ -40,10 +40,6 @@ class Dayaya:
         return limit[phase_index]
     
     @staticmethod
-    def roundUp(totals):
-        return Dayaya.ceil(totals/100)*100
-    
-    @staticmethod
     def getCurrentTime(timezone :tzinfo =CNTZ()):
         return datetime.now(tz=timezone)
 
@@ -158,7 +154,7 @@ class Team:
         self.games_played[phase_index] = games_played
     
     def __setOffset(self, phase_index):
-        self.offset[phase_index] = Dayaya.roundUp(self.aggregate[phase_index]) - self.aggregate[phase_index]
+        self.offset[phase_index] = round(self.aggregate[phase_index]/100)*100 - self.aggregate[phase_index]
 
     def __str__(self):
         return str({"name": self.name, "players": self.players})
